@@ -91,6 +91,18 @@ Requires Node.js 18+.
   engine (no EasyList rule syntax) — it catches the common trackers but
   isn't a replacement for uBlock Origin's rule set.
 
+## Push to GitHub
+
+This project folder is already a git repo with one commit on `main`. To publish it:
+
+```bash
+git remote add origin https://github.com/<your-username>/<your-repo>.git
+git push -u origin main
+```
+
+(Create the empty repo on GitHub first — don't let GitHub initialize it with
+a README, or the push will need a merge.)
+
 ## Project layout
 
 ```
