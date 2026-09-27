@@ -1,117 +1,108 @@
 # BrowseAnony
 
-A lightweight, low-RAM, low-CPU, privacy-first browser built with Electron. Plain
-JavaScript, no frameworks, no bundlers, no telemetry.
+A small Electron browser built around one idea: **browse without leaving a
+trace, without your laptop fans spinning up.** No frameworks, no bundler,
+no telemetry — just plain HTML/CSS/JS.
 
-## Run it
+![CI](https://github.com/<your-username>/<your-repo>/actions/workflows/ci.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+
+## What's different about it
+
+Compared to a normal browser (or a plain Electron wrapper), BrowseAnony
+changes three things:
+
+| | Normal browser | BrowseAnony |
+|---|---|---|
+| **History / cookies** | Saved to disk until you clear them | Kept in RAM only, gone the moment you quit — nothing to clear |
+| **Ads & trackers** | Loaded unless you install an extension | Blocked at the network layer by default (`blocklist.txt`) |
+| **Idle tabs** | Stay loaded, keep burning RAM | Automatically "put to sleep" (process killed) after 60s hidden, and rebuilt on demand when you click back |
+| **Permissions** | Sites can ask for camera/mic/location | Every permission prompt is denied automatically |
+| **Background chatter** | Sync, telemetry, update-checkers running quietly | All disabled — the app talks to nothing except the sites you open |
+
+The tab-sleeping part is the one that actually matters day to day: leave
+ten tabs open and idle, and the app uses roughly the RAM of two. Nothing
+else about it needs configuring for that to work.
+
+## How to use it
+
+**Install and launch:**
 
 ```bash
 npm install
 npm start
 ```
 
-Requires Node.js 18+.
+Requires Node.js 18+. A window opens with one tab, already on DuckDuckGo.
 
-## What makes it lightweight
+**Browsing:**
+- Type a URL or a search term into the address bar and press Enter (or hit
+  **Go**).
+- Click **+** for a new tab, click a tab to switch to it, click the **×**
+  on a tab to close it.
+- Use the **back / forward / reload** buttons in the toolbar like any
+  browser.
+- A dimmed tab with a moon icon means it's asleep (see table above) — click
+  it and it reloads automatically.
+- The **🔒 Anony** badge in the toolbar is just a reminder that the session
+  is in-memory and ad/tracker blocking is on; nothing to click there.
 
-- **Background tabs are suspended, not just throttled.** A hidden tab's
-  `<webview>` — its own renderer process, its own chunk of RAM — is torn
-  down entirely after it's been hidden for `SUSPEND_AFTER_MS` (default 60s,
-  see the top of `renderer.js`). The tab stays in the strip, dimmed with a
-  💤 icon, and just remembers its URL; clicking it rebuilds the webview and
-  reloads. This is the single biggest RAM lever in the app — a window with
-  ten tabs open costs about the same as one with two, as long as you're not
-  actively using all ten at once.
-- Chromium's own background services are turned off at the switch level
-  since this app never uses them: sync, component updater, domain
-  reliability pings, translate, optimization-guide downloads/fetching,
-  media-router discovery, and the back/forward page cache.
-- Disk and media caches are capped at 20MB instead of growing unbounded.
-- No application menu, no devtools panel, no extensions, no default apps.
-- Plain HTML/CSS/JS — nothing to compile, no React/webpack overhead in the
-  renderer.
-- Background tabs (while still awake, i.e. within the suspend window) are
-  throttled (`backgroundThrottling: true`) so they don't compete for CPU.
-- Spellcheck dictionaries are disabled (they sit in RAM for the life of the
-  app otherwise).
-- V8 heap is capped per renderer (`--max-old-space-size=256`) to keep runaway
-  pages in check.
-- Sandboxed, isolated renderers (`sandbox: true`, `contextIsolation: true`,
-  `nodeIntegration: false`) with no preload exposed to web content.
+**Keyboard shortcuts:**
 
-### Squeezing further
+| Shortcut | Action |
+|---|---|
+| `Ctrl/Cmd + T` | New tab |
+| `Ctrl/Cmd + W` | Close current tab |
+| `Ctrl/Cmd + L` | Focus the address bar |
+| `Ctrl/Cmd + R` | Reload current tab |
 
-- Lower `SUSPEND_AFTER_MS` in `renderer.js` (e.g. to `20 * 1000`) for a more
-  aggressive box — tabs sleep almost as soon as you leave them, at the cost
-  of a reload flicker when you switch back quickly.
-- Drop `--max-old-space-size` in `main.js` to `192` or lower if pages don't
-  need it.
-- `--disable-site-isolation-trials --disable-features=IsolateOrigins,site-per-process`
-  can be added to `main.js` to merge same-site iframes into fewer processes.
-  This is **not** enabled by default — it weakens Chromium's isolation
-  between origins on the same page, which is a real security trade-off, not
-  just a memory one. Only add it if you understand and accept that.
+**Closing the app:** just quit it normally — that's the "clear history"
+step. There's nothing saved to disk to begin with.
 
-## What makes it private
+## Tuning it (optional)
 
-- **In-memory session by default.** All tabs share a single non-persistent
-  session partition (`anony-session`, no `persist:` prefix). Cookies, cache,
-  and history live in RAM only and disappear the moment you quit — there is
-  nothing to clear.
-- **Tracker/ad blocking.** `blocklist.txt` lists common analytics, ad, and
-  tracking domains; requests to them are cancelled before they leave the
-  process. Edit the file and restart to add or remove entries.
-- **Do Not Track / Global Privacy Control headers** are sent with every
-  request (`DNT: 1`, `Sec-GPC: 1`).
-- **Referrers are trimmed** to the origin only, never the full path/query.
-- **Permissions are denied by default** — camera, microphone, geolocation,
-  notifications, etc. all fail closed.
-- Any popup or `<webview>` a page tries to open is forced onto the same
-  hardened, sandboxed partition — it can't escape into Node or get its own
-  persistent storage.
+- Want tabs to sleep faster/slower? Change `SUSPEND_AFTER_MS` near the top
+  of `renderer.js` (milliseconds; default is `60 * 1000`).
+- Want to block or unblock a domain? Add or remove a line in
+  `blocklist.txt` and restart the app.
+- Want a smaller memory ceiling per tab? Lower `--max-old-space-size` in
+  `main.js`.
 
-## Shortcuts
+## Project layout
 
-| Action        | Shortcut |
-|---------------|----------|
-| New tab       | Ctrl/Cmd+T |
-| Close tab     | Ctrl/Cmd+W |
-| Focus address | Ctrl/Cmd+L |
-| Reload        | Ctrl/Cmd+R |
+```
+browseanony/
+├── main.js                     # window creation, privacy/session hardening
+├── preload.js                  # minimal bridge, no Node exposed to pages
+├── index.html                  # toolbar + tab strip shell
+├── style.css                   # flat, dark UI
+├── renderer.js                 # tabs, navigation, tab-sleeping logic
+├── blocklist.txt                 # tracker/ad domains blocked by default
+├── package.json
+├── LICENSE
+└── .github/workflows/ci.yml     # syntax-checks the JS on push/PR
+```
 
-## Notes / honest limitations
+## Honest limitations
 
-- Electron ships a full Chromium, so "lightweight" here means lightweight
-  *for an Electron app* — leaner than a default Electron shell, not leaner
-  than a native browser.
-- Each tab is a separate `<webview>` guest process, same as Chrome's
-  per-tab process model; closing unused tabs is still the biggest RAM lever
-  you control.
-- The tracker blocklist is a simple domain list, not a full filter-list
-  engine (no EasyList rule syntax) — it catches the common trackers but
-  isn't a replacement for uBlock Origin's rule set.
+- It's still Chromium under the hood, so "lightweight" means lightweight
+  *for an Electron app*, not lighter than a native browser.
+- The blocklist is a plain domain list, not a full filter-list engine like
+  uBlock Origin's.
+- An awake tab is still its own renderer process — the sleep behavior is
+  what keeps that from adding up.
 
 ## Push to GitHub
-
-This project folder is already a git repo with one commit on `main`. To publish it:
 
 ```bash
 git remote add origin https://github.com/<your-username>/<your-repo>.git
 git push -u origin main
 ```
 
-(Create the empty repo on GitHub first — don't let GitHub initialize it with
-a README, or the push will need a merge.)
+(This folder is already a git repo with commits on `main` — just add the
+remote and push. Create the empty repo on GitHub first so there's nothing
+to merge.)
 
-## Project layout
+## License
 
-```
-browseanony/
-├── main.js         # app entry, window creation, privacy/session hardening
-├── preload.js      # minimal contextBridge, no Node exposed to pages
-├── index.html       # toolbar + tab strip shell
-├── style.css        # flat, dark UI
-├── renderer.js       # tab management, navigation, webview wiring
-├── blocklist.txt      # tracker/ad domains blocked at the network layer
-└── package.json
-```
+MIT — see [LICENSE](./LICENSE).
