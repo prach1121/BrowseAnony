@@ -1,0 +1,14 @@
+{
+  "name": "browseanony",
+  "version": "1.0.0",
+  "description": "A lightweight, low-RAM, low-CPU, privacy-first browser built on Electron.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^32.0.0"
+  }
+}
