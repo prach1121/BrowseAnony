@@ -4,7 +4,7 @@ A small Electron browser built around one idea: **browse without leaving a
 trace, without your laptop fans spinning up.** No frameworks, no bundler,
 no telemetry — just plain HTML/CSS/JS.
 
-![CI](https://github.com/<your-username>/<your-repo>/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/prach1121/BrowseAnony/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ## What's different about it
